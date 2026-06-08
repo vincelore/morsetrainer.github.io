@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morse Code Trainer</title>
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --card-bg: #252538;
+            --text-color: #cdd6f4;
+            --accent-color: #89b4fa;
+            --success-color: #a6e3a1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            padding: 30px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 { color: var(--accent-color); margin-bottom: 30px; }
+        
+        .btn {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn:active { transform: scale(0.95); }
+
+        .hidden { display: none !important; }
+
+        /* Training Page Styling */
+        .letter-display {
+            font-size: 6rem;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #fff;
+        }
+
+        .hint-display {
+            font-size: 1.5rem;
+            color: #a6adc8;
+            min-height: 2rem;
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+        }
+
+        .input-display {
+            font-size: 3.5rem;
+            font-family: monospace;
+            min-height: 4.5rem;
+            color: var(--success-color);
+            letter-spacing: 5px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .controls-info {
+            font-size: 0.9rem;
+            color: #6c7086;
+            line-height: 1.6;
+            border-top: 1px solid #313244;
+            padding-top: 15px;
+        }
+
+        .controls-info code {
+            background: #313244;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f5e0dc;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="home-page" class="container">
+        <h1>Morse Code Trainer</h1>
+        <p>Leer morsecode op jouw eigen tempo.</p>
+        <button class="btn" onclick="startTraining()">Start Training</button>
+    </div>
+
+    <div id="training-page" class="container hidden">
+        <div class="letter-display" id="target-letter">-</div>
+        <div class="hint-display" id="hint-code"></div>
+        <div class="input-display" id="current-input"></div>
+        
+        <div class="controls-info">
+            <p><strong>Hoe te besturen:</strong></p>
+            <p>Klik/Tik kort op <code>Spatie</code> voor een punt (<strong>.</strong>), of hou hem langer ingedrukt voor een streep (<strong>-</strong>).</p>
+            <p>Of gebruik de toetsen: <code>F</code> = punt (<strong>.</strong>) en <code>J</code> = streep (<strong>-</strong>)</p>
+            <p>Foutje gemaakt? Gebruik <code>Backspace</code> om te wissen.</p>
+        </div>
+    </div>
+
+    <script>
+        // Morse code alfabet
+        const morseAlphabet = {
+            'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.', 
+            'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..', 
+            'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.', 
+            'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-', 
+            'Y': '-.--', 'Z': '--..'
+        };
+
+        const letters = Object.keys(morseAlphabet);
+        let currentLetter = '';
+        let userMorseInput = '';
+        let letterCounts = {}; // Houdt bij hoe vaak een letter is getoond voor de hint
+
+        // Timing variabelen voor spatiebalk (in milliseconden)
+        let spacePressedTime = 0;
+        const DASH_THRESHOLD = 200; // Als je de spatiebalk langer dan 200ms inhoudt is het een streep
+
+        function startTraining() {
+            document.getElementById('home-page').classList.add('hidden');
+            document.getElementById('training-page').classList.remove('hidden');
+            
+            // Initialiseer de tellers voor alle letters op 0
+            letters.forEach(l => letterCounts[l] = 0);
+            
+            nextLetter();
+            setupEventListeners();
+        }
+
+        function nextLetter() {
+            userMorseInput = '';
+            updateInputDisplay();
+            
+            // Pak een willekeurige letter
+            currentLetter = letters[Math.floor(Math.random() * letters.length)];
+            document.getElementById('target-letter').innerText = currentLetter;
+            
+            // Hoog de teller voor deze letter op
+            letterCounts[currentLetter]++;
+            
+            // Toon de hint alleen de eerste 3 keer dat de speler deze specifieke letter ziet
+            if (letterCounts[currentLetter] <= 3) {
+                document.getElementById('hint-code').innerText = morseAlphabet[currentLetter];
+            } else {
+                document.getElementById('hint-code').innerText = '?';
+            }
+        }
+
+        function updateInputDisplay() {
+            document.getElementById('current-input').innerText = userMorseInput;
+        }
+
+        function checkInput() {
+            const correctTarget = morseAlphabet[currentLetter];
+            
+            if (userMorseInput === correctTarget) {
+                // Perfect! Ga direct door naar de volgende letter
+                setTimeout(() => {
+                    nextLetter();
+                }, 200); // Heel korte delay zodat je je laatste invoer nog héél even ziet
+            }
+        }
+
+        function setupEventListeners() {
+            window.addEventListener('keydown', (e) => {
+                // Voorkom dat de spatiebalk de pagina naar beneden scrolt
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    if (e.repeat) return; // Negeer auto-repeat van het OS bij ingedrukt houden
+                    spacePressedTime = Date.now();
+                }
+                
+                // Directe invoer via F en J keys
+                if (e.key.toLowerCase() === 'f') {
+                    userMorseInput += '.';
+                    updateInputDisplay();
+                    checkInput();
+                }
+                if (e.key.toLowerCase() === 'j') {
+                    userMorseInput += '-';
+                    updateInputDisplay();
+                    checkInput();
+                }
+
+                // Backspace om de laatste invoer te wissen
+                if (e.key === 'Backspace') {
+                    userMorseInput = userMorseInput.slice(0, -1);
+                    updateInputDisplay();
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    const pressDuration = Date.now() - spacePressedTime;
+                    
+                    if (pressDuration >= DASH_THRESHOLD) {
+                        userMorseInput += '-';
+                    } else {
+                        userMorseInput += '.';
+                    }
+                    
+                    updateInputDisplay();
+                    checkInput();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
